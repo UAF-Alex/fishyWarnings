@@ -1,0 +1,16 @@
+Package: fishyWarnings
+Title: How should management respond to warning signals of haddock collapse? 
+Version: 0.0.0.9000
+Authors@R: c(person(given="Ryan D.", family="Batt", email="battrd@gmail.com", role=c("aut","cre")),
+	person(given="Edward W.", family="Tekwa", email="wong.tek.wa@gmail.com", role=c("aut")),
+	person(given="Michael", family="Fogarty", email="michael.fogarty@noaa.gov", role=c("aut")),
+	person(given="Charles ", family="Perretti", email="charles.perretti@noaa.gov", role=c("aut")),
+	person(given="Eli P.", family="Fenichel", email="e.p.fenichel@gmail.com", role=c("aut")),
+	person(given="Malin L.", family="Pinsky", email="malin.pinsky@rutgers.edu", role=c("aut")))
+Description: Simulation model for haddock.
+Depends:
+    R (>= 3.3.0)
+License: MPL-2.0
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 5.0.1
