@@ -17,4 +17,7 @@ RoxygenNote: 5.0.1
 Imports: stats,
     RcppRoll,
     zoo
-Suggests: testthat
+Suggests: testthat,
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

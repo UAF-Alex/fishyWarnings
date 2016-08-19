@@ -1,0 +1,46 @@
+---
+title: "Fishy Examples"
+author: "Ryan Batt"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Fishy Examples}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+The examples in some of the fishyWarnings examples are fairly thorough simulations geared toward the purpose of the package, which of course is to see if early warnings can help avoid a haddock collapse.
+
+## Make Figure 5a
+First, simulate the time series. Haddock starts at a low biomass (the 1993 value of 13.8 kt). Then we simulate forward 50 years under 6 diferent harvest rates.
+```{r, echo=TRUE}
+library(fishyWarnings)
+nY <- 50
+# 13.8 kt is from pg 2922, second column, penultimate paragraph; 
+# 13.8 is the starting value in 1993
+makeB <- function(){c(13.8, rep(NA, nY-1))}
+Year <- seq(1993, length.out=nY)
+qE <- c(0, 0.06, 0.12, 0.18, 0.21, 0.24)
+Bvec <- replicate(length(qE), makeB())
+for(j in 1:length(qE)){
+	for(i in 2:nrow(Bvec)){
+		Bvec[i,j] <- Bstep(Bvec[i-1,j], qE[j], sdU=0.1)
+	}
+}
+ltys <- c("solid", "dotted", "dashed", "longdash", "twodash", "dotdash")
+ylim <- range(Bvec, na.rm=TRUE)
+```
+
+With the simulation complete, we can plot the results, recreating Figure 5A:  
+  
+```{r, fig.width=6, fig.height=6, fig.cap="Haddock biomass under different proportional harvest rates. Replicates Figure 5A from Spencer & Collie 1997."}
+plot(Year, Bvec[,1], type='l', 
+	lty=ltys[1], ylim=ylim, 
+	ylab="Biomass (kt)", xlab="time", main="STH model"
+)
+for(j in 2:ncol(Bvec)){
+	lines(Year, Bvec[,j], lty=ltys[j])
+}
+legend("topleft", paste("F", qE, sep="="), lty=ltys)
+```
+As you can see, depending on the harvest rate, the stock may or may not rebuild.
