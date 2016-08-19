@@ -1,3 +1,5 @@
+[![Travis-CI Build Status](https://travis-ci.org/rBatt/fishyWarnings.svg?branch=master)](https://travis-ci.org/rBatt/fishyWarnings)
+
 # fishyWarnings
 Adjusting management in response to incoming statistical indicators of resilience
 
