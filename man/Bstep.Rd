@@ -33,18 +33,24 @@ In the example below, the equilibrium value (average between 2020 and 2040) for 
 \examples{
 
 # Make Figure 5a
-makeB <- function(){c(13.8, rep(NA, 49))} # 13.8 kt is from pg 2922, second column, penultimate paragraph; it's the starting value in 1993
-Year <- seq(1993, length.out=50)
+nY <- 50
+# 13.8 kt is from pg 2922, second column, penultimate paragraph; 
+# 13.8 is the starting value in 1993
+makeB <- function(){c(13.8, rep(NA, nY-1))}
+Year <- seq(1993, length.out=nY)
 qE <- c(0, 0.06, 0.12, 0.18, 0.21, 0.24)
 Bvec <- replicate(length(qE), makeB())
 for(j in 1:length(qE)){
 	for(i in 2:nrow(Bvec)){
-		Bvec[i,j] <- Bstep(Bvec[i-1,j], qE[j])
+		Bvec[i,j] <- Bstep(Bvec[i-1,j], qE[j], sdU=0.1)
 	}
 }
 ltys <- c("solid", "dotted", "dashed", "longdash", "twodash", "dotdash")
 ylim <- range(Bvec, na.rm=TRUE)
-plot(Year, Bvec[,1], type='l', lty=ltys[1], ylim=ylim, ylab="Biomass (kt)", xlab="time", main="STH model")
+plot(Year, Bvec[,1], type='l', 
+	lty=ltys[1], ylim=ylim, 
+	ylab="Biomass (kt)", xlab="time", main="STH model"
+)
 for(j in 2:ncol(Bvec)){
 	lines(Year, Bvec[,j], lty=ltys[j])
 }

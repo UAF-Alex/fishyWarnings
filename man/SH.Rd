@@ -17,6 +17,8 @@ SH(B, r = 0.76, K = 520.2, D = 28.2, A = 27.9, ...)
 \item{D}{maximum rate of predation in type III predator functional response}
 
 \item{A}{predator saturation in type III predator functional response}
+
+\item{...}{not used}
 }
 \description{
 Steele and Henderson Model

@@ -24,6 +24,7 @@ schaefer <- function(B, r=0.40, K=129.0, ...){
 #' @param K carrying capacity of haddock
 #' @param D maximum rate of predation in type III predator functional response
 #' @param A predator saturation in type III predator functional response
+#' @param ... not used
 #' 
 #' @details
 #' The default arguments are the parameter values from Table 1 of Spencer and Collie 1997
@@ -54,7 +55,9 @@ SH <- function(B, r=0.76, K=520.2, D=28.2, A=27.9, ...){
 #' 
 #' # Make Figure 5a
 #' nY <- 50
-#' makeB <- function(){c(13.8, rep(NA, nY-1))} # 13.8 kt is from pg 2922, second column, penultimate paragraph; it's the starting value in 1993
+#' # 13.8 kt is from pg 2922, second column, penultimate paragraph; 
+#' # 13.8 is the starting value in 1993
+#' makeB <- function(){c(13.8, rep(NA, nY-1))}
 #' Year <- seq(1993, length.out=nY)
 #' qE <- c(0, 0.06, 0.12, 0.18, 0.21, 0.24)
 #' Bvec <- replicate(length(qE), makeB())
@@ -65,7 +68,10 @@ SH <- function(B, r=0.76, K=520.2, D=28.2, A=27.9, ...){
 #' }
 #' ltys <- c("solid", "dotted", "dashed", "longdash", "twodash", "dotdash")
 #' ylim <- range(Bvec, na.rm=TRUE)
-#' plot(Year, Bvec[,1], type='l', lty=ltys[1], ylim=ylim, ylab="Biomass (kt)", xlab="time", main="STH model")
+#' plot(Year, Bvec[,1], type='l', 
+#' 	lty=ltys[1], ylim=ylim, 
+#' 	ylab="Biomass (kt)", xlab="time", main="STH model"
+#' )
 #' for(j in 2:ncol(Bvec)){
 #' 	lines(Year, Bvec[,j], lty=ltys[j])
 #' }
@@ -81,7 +87,7 @@ Bstep <- function(B, qE=0.15, sdU=0.1, dt=0.1, fB=c("SH", "schaefer"), ...){
 		fB_val <- fB(B=(B), ...)
 		B <- B + fB_val*dt
 	}
-	u <- rnorm(1, mean=0, sd=sdU)
+	u <- stats::rnorm(1, mean=0, sd=sdU)
 	B*exp(u)
 }
 
