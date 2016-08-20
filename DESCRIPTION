@@ -19,5 +19,6 @@ Imports: stats,
     zoo
 Suggests: testthat,
     knitr,
-    rmarkdown
+    rmarkdown,
+    graphics
 VignetteBuilder: knitr
