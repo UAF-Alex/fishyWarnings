@@ -2,17 +2,19 @@
 title: "Fishy Examples"
 author: "Ryan Batt"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
+output: 
+  html_vignette:
+    toc: true
 vignette: >
   %\VignetteIndexEntry{Fishy Examples}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-The examples in some of the fishyWarnings examples are fairly thorough simulations geared toward the purpose of the package, which of course is to see if early warnings can help avoid a haddock collapse.
+The examples in some of the fishyWarnings examples are fairly thorough simulations + analyses geared toward the purpose of the package, which of course is to see if early warnings can help avoid a haddock collapse.
 
-## Make Figure 5a
-First, simulate the time series. Haddock starts at a low biomass (the 1993 value of 13.8 kt). Then we simulate forward 50 years under 6 diferent harvest rates.
+## Rebuilding Haddock
+First, simulate the time series. Haddock starts at a low biomass (the 1993 value of 13.8 kt). Then we simulate forward 50 years under 6 different harvest rates.
 ```{r, echo=TRUE}
 library(fishyWarnings)
 nY <- 50
@@ -33,7 +35,7 @@ ylim <- range(Bvec, na.rm=TRUE)
 
 With the simulation complete, we can plot the results, recreating Figure 5A:  
   
-```{r, fig.width=6, fig.height=6, fig.cap="Haddock biomass under different proportional harvest rates. Replicates Figure 5A from Spencer & Collie 1997."}
+```{r, fig.width=6, fig.height=6, fig.cap="**Figure 1.** From ?`Bstep` example. Haddock biomass under different proportional harvest rates. Replicates Figure 5A from Spencer & Collie 1997."}
 plot(Year, Bvec[,1], type='l', 
 	lty=ltys[1], ylim=ylim, 
 	ylab="Biomass (kt)", xlab="time", main="STH model"
@@ -43,4 +45,153 @@ for(j in 2:ncol(Bvec)){
 }
 legend("topleft", paste("F", qE, sep="="), lty=ltys)
 ```
-As you can see, depending on the harvest rate, the stock may or may not rebuild.
+  
+As you can see, depending on the harvest rate, the stock may or may not rebuild.  
+
+## Collapse Haddock, Find Warnings
+In this case we are going to start with a high biomass of haddock, and increase harvest rate as time passes.  
+  
+In each year, we will calculate an early warning signal.  The early warning signals used here are 1) standard deviation, 2) first order autocorrelation (AR(1)), and 3) redShift, which is a measure of spectral slope.  
+  
+According to Spencer and Collie (1997), the critical point for collapse (going from high stable point to low) is at $qE = 0.36$. As the time series evolves and harvest intensifies and approach 0.36, the early warning indicators should beging to "fire off". AR(1) and SD should be elevated, and the redShift signal should decline.  
+  
+Note: I am still playing with the redShift indicator, but the idea is that the variance spectrum should become stronger and should shift to relatively more power at lower frequencies. The statistic reported as redShift in these figures is the slope of log(power) vs 1/log(freq) (where freq is `stats::spectrum()$freq`, which is probably the inverse of what you would expect). Thus, a negative value for the spectrum slope means that more power is at lower frequencies, and decreases in this slope should mean a relative increase in low-frequency variability. So far, this is not the pattern that I have observed, so something may be wrong.
+  
+First, set up some options regarding simulation length and harvest value gradient.  
+```{r}
+# ==================
+# = Set up Options =
+# ==================
+nYear <- 5E2
+Year <- 1:nYear
+tripVal <- c(0.36, 0.21)
+nBurn <- 100
+sdU <- 0.05
+
+# set up qE to increase harvest until collapse
+qE_range <- c(tripVal[1]-0.2, tripVal[1]+0.05)
+
+# goal here is to have harvest rate precisely hit certain 
+# values of qE during an integer year,
+# while retaining linear change throughout
+qEPoints <- c(qE_range[1], tripVal[2], tripVal[1], qE_range[2])
+qEPoints <- qEPoints[qEPoints>=min(qE_range) & qEPoints<=max(qE_range)]
+seq_arg0 <- c(as.list(range(qEPoints)), list(length.out=nYear))
+yrProbs <- (qEPoints-min(qEPoints))/diff(range(qEPoints))
+yrPoints <- quantile(Year, yrProbs)
+qE <- approx(x=yrPoints, y=qEPoints, xout=Year)$y
+```
+  
+### Method 1: Approach equilibrium per qE
+For each value of `qE` (harvest rate), simulate `{r nBurn}` years of data, calculating the warning indicators for that entire time series (it's important to note that qE is constant here). The idea is that the system is more-or-less at equilibrium, which contrasts with what we'll do next (Method 2).
+```{r}
+# ===========================================
+# = Simulate Biomass and Calculate Warnings =
+# ===========================================
+# For each year, simulate nBurn years
+# B in the top-level year is the mean of the nBurn sims
+# Early warnings calculated from the nBurn, so no rolling window
+warnMat <- matrix(NA, ncol=3, nrow=nYear, dimnames=list(NULL, c("sd","ac1","redShift")))
+stats <- colnames(warnMat)
+Bmu <- numeric(nYear)
+B0 <- 400
+rsl <- structure(vector('list', nYear), class="rslist", .Names=Year) # for the plot.rslist method I wrote
+for(i in 1:nYear){
+	B0 <- Burn(B0, n=100, qE=qE[i], sdU=0, accumulate=FALSE)
+	B_t <- Burn(B0, n=nBurn, qE=qE[i], sdU=sdU, accumulate=TRUE)
+	for(s in 1:ncol(warnMat)){
+		if(stats[s]=="redShift"){
+			rsl[[i]] <- ews(B_t, stat=stats[s])
+			warnMat[i,s] <- rsl[[i]]
+		}else{
+			warnMat[i,s] <- ews(B_t, stat=stats[s])
+		}
+	}
+	Bmu[i] <- mean(B_t)
+}
+```
+
+  
+```{r, fig.width=6, fig.height=6, fig.cap="**Figure 2.** Change qE, but report mean of B per qE, and calculate warnings per qE, NOT in rolling window. For each qE, there are nBurn simulated years. Vertical dashed lines are years where harvest rate is equal to indicated values. Harvest rate changes linearly over time. In the last panel, the color is the strength of the variance (log(power)) at the frequencies indicated on the vertical axis, and the line (corresponding the right-vertical axis) is the redShift metric."}
+# =============================
+# = Plot Biomass and Warnings =
+# =============================
+par(mfrow=c(2,2), mar=c(1.75,1.75,0.5,1.75), ps=8, cex=1, mgp=c(0.75,0.15,0), tcl=-0.15)
+plot(Year, Bmu, type='l')
+abline(v=yrPoints, lty='dashed')
+text_y <- min(Bmu)+yrProbs*diff(range(Bmu))
+text(yrPoints, y=text_y, label=paste0("qE=", qEPoints), pos=c(4,4,2,2))
+
+plot(Year, warnMat[,"sd"], col="forestgreen", type="l", ylab="Standard Deviation")
+abline(v=yrPoints, lty='dashed')
+plot(Year, warnMat[,"ac1"], col="blue", type='l', ylab="AR(1)")
+abline(v=yrPoints, lty='dashed')
+plot(rsl, xaxs='r')
+par(new=TRUE)
+plot(Year, warnMat[,"redShift"], 
+	col=adjustcolor("white",0.5), 
+	lwd=3, type='l', ylab="", xaxt='n', yaxt='n'
+)
+lines(Year, warnMat[,"redShift"], col=adjustcolor("black",0.5), lwd=0.5)
+axis(side=4)
+abline(v=yrPoints, lty='dashed')
+```
+  
+### Method 2: Let biomass evolve as qE changes slowly
+In this approach biomass is not iterated forward nBurn time steps per qE value. Instead, biomass and harvest rate both change dynamically. This is a more realistic scenario, because the early warnings are calculated in a rolling window and biomass may never be at equilibrium b/c qE keeps changing (chasing a moving target).
+  
+  
+Simulate time series and calculate rolling window statistics.
+```{r}
+# ==============================
+# = Calculate time series of B =
+# ==============================
+B0 <- 400
+B0 <- Burn(B0, n=nBurn, qE=qE[1], sdU=0)
+Bvec <- c(B0, rep(NA, nYear-1))
+for(i in 2:nYear){
+	Bvec[i] <- Bstep(B=Bvec[i-1], qE=qE[i], sdU=sdU)
+}
+
+# ==================================
+# = Calculate rolling window stats =
+# ==================================
+sdVec <- rollWarn(Bvec, stat='sd', win=min(50, nYear/5))
+ac1Vec <- rollWarn(Bvec, stat='ac1', win=min(50, nYear/5))
+redVec0 <- rollWarn(Bvec, stat="redShift", win=min(50, nYear/5)) # holds the full spectrum
+redList <- attributes(redVec0)$rsl # this gets the full spectrum formatted for plotting
+redVec <- sapply(redVec0, function(x)x[[1]]) # this gets just the spectral slope
+```
+  
+  
+Plot the early warnings:  
+  
+```{r, fig.width=6, fig.height=6, fig.cap="**Figure 3.** Haddock biomass and qE change each year; biomass never approaches an equilibrium, and early warning statistics are calculated in a backwards-looking rolling window. Vertical dashed lines are years where harvest rate is equal to indicated values. Harvest rate changes linearly over time. In the last panel, the color is the strength of the variance (log(power)) at the frequencies indicated on the vertical axis, and the line (corresponding the right-vertical axis) is the redShift metric."}
+# =======================
+# = Plot B and Warnings =
+# =======================
+par(mfrow=c(2,2), mar=c(1.75,1.75,0.5,1.75), ps=8, cex=1, mgp=c(0.75,0.15,0), tcl=-0.15)
+plot(Year, Bvec, type='l')
+abline(v=yrPoints, lty='dashed')
+text_y <- min(Bvec)+yrProbs*diff(range(Bvec))
+text(yrPoints, y=text_y, label=paste0("qE=", qEPoints), pos=c(4,4,2,2))
+
+plot(Year, sdVec, col="forestgreen", type="l", ylab="Standard Deviation")
+abline(v=yrPoints, lty='dashed')
+plot(Year,ac1Vec, col="blue", type='l', ylab="AR(1)")
+abline(v=yrPoints, lty='dashed')
+plot(redList, xaxs='r')
+par(new=TRUE)
+plot(Year, redVec, col=adjustcolor("white",0.5), 
+	lwd=3, type='l', ylab="", xaxt='n', yaxt='n'
+)
+lines(Year, redVec, col=adjustcolor("black",0.5), lwd=0.5)
+axis(side=4)
+mtext("redShift", side=4, line=0.75)
+abline(v=yrPoints, lty='dashed')
+```
+  
+### Warning of Collapse Conclusion
+As you can see, there are definite changes in the early warning statistics near the time that the biomass collapses. However, the standard deviation increases rather drastically right before the shift in some cases, and the redShift is not behaving like I'd expect it to (though, the metric I've cooked up is likely imperfect). Furthermore, it seems odd to me that the shift is not occurring exactly at $qE=0.36$; this is when I'd expect the stock to collapse. It may be that the parameterization I'm using here is slightly different from that described in the Spencer and Collie (1997) text, and I just didn't notice it (though I took care to try to select the parameter estimates reported in the paper).
+
+
